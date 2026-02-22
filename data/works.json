@@ -1,0 +1,6 @@
+{
+  "works": [
+    {"id": "1", "title": "Brand Identity", "type": "Branding", "tools": ["Figma", "Illustrator"]},
+    {"id": "2", "title": "UI Design", "type": "UI/UX", "tools": ["Figma", "Sketch"]}
+  ]
+}
