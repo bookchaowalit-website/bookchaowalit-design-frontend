@@ -1,197 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-function Shell({
-  title,
-  subtitle,
-  badge = "Portfolio demo · local-only",
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  badge?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 dark:bg-black dark:text-zinc-100">
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <header className="mb-8">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{badge}</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">{subtitle}</p>
-        </header>
-        {children}
-        <footer className="mt-10 border-t border-zinc-200 pt-4 text-xs text-zinc-500 dark:border-zinc-800">
-          Honest demo: no multi-tenant backend. State (if any) stays in this browser.
-        </footer>
-      </div>
-    </div>
-  );
-}
-
-function Button({
-  children,
-  onClick,
-  variant = "primary",
-  disabled,
-  type = "button",
-  className = "",
-}: {
-  children: ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "danger";
-  disabled?: boolean;
-  type?: "button" | "submit";
-  className?: string;
-}) {
-  const base =
-    "inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 " +
-    className;
-  const styles =
-    variant === "primary"
-      ? "bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900"
-      : variant === "secondary"
-        ? "bg-white text-zinc-900 ring-1 ring-zinc-200 hover:bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-700"
-        : variant === "danger"
-          ? "bg-red-600 text-white hover:bg-red-500"
-          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900";
-  return (
-    <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${styles}`}>
-      {children}
-    </button>
-  );
-}
-
-const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950";
-
-function useLocalStorage<T>(key: string, initial: T) {
-  const [value, setValue] = useState<T>(initial);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw != null) setValue(JSON.parse(raw) as T);
-    } catch {
-      /* ignore */
-    }
-    setReady(true);
-  }, [key]);
-  useEffect(() => {
-    if (!ready) return;
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value, ready]);
-  return [value, setValue] as const;
-}
-
-function uid() {
-  return crypto.randomUUID();
-}
-
-async function copyText(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-
-type Item = { id: string; title: string; body: string; status: string; createdAt: number };
-
-const SEED: Item[] = [{"title": "Color tokens", "body": "Zinc scale + accent", "status": "Approved"}].map((x: any, i: number) => ({
-  id: String(x.id ?? i + 1),
-  title: x.title,
-  body: x.body,
-  status: x.status,
-  createdAt: x.createdAt ?? Date.now() - i * 86400000,
-}));
-
-const FIELDS = [{"key": "title", "label": "Title", "type": "text"}, {"key": "body", "label": "Details", "type": "textarea"}, {"key": "status", "label": "Status", "type": "select", "options": ["Draft", "Active", "Done"]}] as { key: "title" | "body" | "status"; label: string; type: string; options?: string[] }[];
+type Work = { id: string; title: string; type: string; tools: string[]; status: string };
+const SEED: Work[] = [
+  { id: "1", title: "Brand Identity", type: "Branding", tools: ["Figma", "Illustrator"], status: "Approved" },
+  { id: "2", title: "UI Design", type: "UI/UX", tools: ["Figma", "Sketch"], status: "In review" },
+];
+function useLocalStorage<T>(key: string, initial: T) { const [value, setValue] = useState(initial); const [ready, setReady] = useState(false); useEffect(() => { try { const raw = localStorage.getItem(key); if (raw) setValue(JSON.parse(raw)); } catch { /* keep seed */ } setReady(true); }, [key]); useEffect(() => { if (ready) localStorage.setItem(key, JSON.stringify(value)); }, [key, value, ready]); return [value, setValue] as const; }
 
 export default function Home() {
-  const [items, setItems] = useLocalStorage<Item[]>("design-v1", SEED);
+  const [works, setWorks] = useLocalStorage<Work[]>("design-v1", SEED);
   const [query, setQuery] = useState("");
-  const [draft, setDraft] = useState<Record<string, string>>(() =>
-    Object.fromEntries(FIELDS.map((f) => [f.key, f.options?.[0] ?? ""]))
-  );
-
-  const filtered = items.filter((it) =>
-    (it.title + it.body + it.status).toLowerCase().includes(query.toLowerCase())
-  );
-
-  const add = () => {
-    if (!String(draft.title || "").trim()) return;
-    setItems((prev) => [
-      {
-        id: uid(),
-        title: draft.title || "",
-        body: draft.body || "",
-        status: draft.status || "",
-        createdAt: Date.now(),
-      },
-      ...prev,
-    ]);
-    setDraft(Object.fromEntries(FIELDS.map((f) => [f.key, f.options?.[0] ?? ""])));
-  };
+  const [draft, setDraft] = useState({ title: "", type: "UI/UX", tools: "", status: "Draft" });
+  const filtered = useMemo(() => works.filter((work) => `${work.title} ${work.type} ${work.tools.join(" ")} ${work.status}`.toLowerCase().includes(query.toLowerCase())), [works, query]);
+  const addWork = () => { if (!draft.title.trim()) return; setWorks((current) => [{ id: crypto.randomUUID(), title: draft.title, type: draft.type, tools: draft.tools.split(",").map((tool) => tool.trim()).filter(Boolean), status: draft.status }, ...current]); setDraft({ title: "", type: "UI/UX", tools: "", status: "Draft" }); };
+  const approved = works.filter((work) => work.status === "Approved").length;
 
   return (
-    <Shell title="Design Specs" subtitle="UI tokens and design notes.">
-      <div className="mb-4 flex flex-wrap gap-2">
-        <input className={`${inputClass} max-w-sm`} placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <span className="self-center text-sm text-zinc-500">{filtered.length} items</span>
-      </div>
-      <div className="mb-6 grid gap-2 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 md:grid-cols-2">
-        {FIELDS.map((f) => (
-          <label key={f.key} className="block space-y-1">
-            <span className="text-xs font-medium text-zinc-500">{f.label}</span>
-            {f.type === "textarea" ? (
-              <textarea
-                className={`${inputClass} min-h-[72px]`}
-                value={draft[f.key] || ""}
-                onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-              />
-            ) : f.type === "select" ? (
-              <select
-                className={inputClass}
-                value={draft[f.key] || ""}
-                onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-              >
-                {(f.options || []).map((o) => (
-                  <option key={o}>{o}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                className={inputClass}
-                value={draft[f.key] || ""}
-                onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
-              />
-            )}
-          </label>
-        ))}
-        <div className="md:col-span-2">
-          <Button onClick={add}>Add</Button>
-        </div>
-      </div>
-      <ul className="space-y-2">
-        {filtered.map((it) => (
-          <li key={it.id} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div className="font-medium">{it.title}</div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{it.body}</p>
-                <span className="mt-2 inline-block rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-900">{it.status}</span>
-              </div>
-              <Button variant="ghost" onClick={() => setItems((prev) => prev.filter((x) => x.id !== it.id))}>
-                Delete
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </Shell>
+    <main className="atlas-shell">
+      <header className="atlas-header"><div className="atlas-legend"><span className="legend-dot dot-amber" /><span className="legend-dot dot-cyan" /><span className="legend-dot dot-red" /><small>FIELD<br />NOTES</small></div><div><p className="atlas-kicker">DESIGN SPECS / STAR ATLAS</p><h1>Read the<br /><em>work in constellations.</em></h1><p className="atlas-deck">A small index of visual work, its medium, and the tools that hold it together. Search the field or add another point of reference.</p></div><div className="atlas-coordinates"><span>RA 05h 34m</span><strong>02</strong><span>DEC −05° 27′</span></div></header>
+
+      <section className="atlas-sky" aria-labelledby="sky-title"><div className="sky-lines" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div><div className="sky-copy"><p className="atlas-kicker">OBSERVATION FIELD</p><h2 id="sky-title">{filtered.length} points in view</h2><p>Each project is a star: the title is the signal, the type is its region, and the tools are the nearby bodies.</p></div><div className="constellation" aria-hidden="true"><span className="star star-1" /><span className="star star-2" /><span className="star star-3" /><span className="star star-4" /><span className="line line-1" /><span className="line line-2" /><span className="line line-3" /></div><div className="atlas-count"><b>{approved}</b><span>approved<br />signals</span></div></section>
+
+      <section className="atlas-instrument" aria-labelledby="instrument-title"><div className="instrument-label"><span className="crosshair" /><p className="atlas-kicker">LOG A NEW POINT</p><h2 id="instrument-title">Add to the atlas</h2><p>Keep the record specific enough to revisit.</p></div><div className="instrument-form"><label><span>Work title</span><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Editorial system" /></label><label><span>Region / type</span><select value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value })}><option>Branding</option><option>UI/UX</option><option>Editorial</option><option>Art direction</option><option>Research</option></select></label><label><span>Tools, comma-separated</span><input value={draft.tools} onChange={(event) => setDraft({ ...draft, tools: event.target.value })} placeholder="Figma, Illustrator" /></label><button onClick={addWork}>Plot point <b>↗</b></button></div></section>
+
+      <section className="atlas-library" aria-labelledby="library-title"><div className="library-top"><div><p className="atlas-kicker">THE CATALOGUE</p><h2 id="library-title">Known work</h2></div><label className="atlas-search"><span>Search by name, region, tool</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="find a signal" /></label></div>{filtered.length === 0 ? <p className="atlas-empty">No points match this search. Try another coordinate or plot a new point.</p> : <ol className="work-list">{filtered.map((work, index) => <li key={work.id} className="work-row"><span className="work-number">{String(index + 1).padStart(2, "0")}</span><div className="work-title"><h3>{work.title}</h3><span>{work.type}</span></div><div className="tool-orbit">{work.tools.map((tool) => <code key={tool}>{tool}</code>)}</div><span className={`work-status status-${work.status.toLowerCase().replaceAll(" ", "-")}`}>{work.status}</span><button className="erase-work" onClick={() => setWorks((current) => current.filter((item) => item.id !== work.id))} aria-label={`Remove ${work.title}`}>×</button></li>)}</ol>}</section>
+      <footer className="atlas-footer"><span>DESIGN SPECS / 2026</span><span>Local catalogue · data stays in this browser</span></footer>
+    </main>
   );
 }

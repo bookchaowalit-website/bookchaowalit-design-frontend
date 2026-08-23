@@ -27,6 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* THESIS: Design Specs is a star atlas for visual work, refusing a generic item tracker. OWN-WORLD: abyssal navy, paper-white signals, cyan coordinates, amber stars, and thin constellation lines. STORY: visitors search the catalogue, plot a new work point, and read its tools as nearby bodies. FIRST VIEWPORT: field legend, oversized atlas title, coordinates, then the observation field. FORM: celestial notation atlas, assigned grounded direction 3, seed ff8c96c1. FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance */}
         <Analytics />
         <SpeedInsights />
         {children}
