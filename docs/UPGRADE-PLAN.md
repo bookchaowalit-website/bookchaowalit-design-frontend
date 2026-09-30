@@ -12,7 +12,6 @@ validated, MCP serves the real seed catalogue, and CI runs strict checks.
 
 ### P1
 - Confirm canonical domain; set `NEXT_PUBLIC_SITE_URL`.
-- Export/import the local catalogue as JSON.
 - Split the long single-line JSX in `app/page.tsx` into components.
 
 ### P2
@@ -31,3 +30,7 @@ validated, MCP serves the real seed catalogue, and CI runs strict checks.
   fixed lint errors.
 - Replaced the echoing stub `/api/mcp` with real catalogue tools.
 - Metadata description matched to the product; canonical; robots/sitemap; CI.
+
+## Done in this pass (pass 2)
+- JSON backup: Export downloads the catalogue (`exportWorks`), Import merges a file (`importWorks`: export envelope or bare array, normalised like saved data, existing ids kept) with a visible `role="status"` result. Tested in `tests/works.test.ts`.
+- Checked cross-repo consistency: sitemap/robots already generated from `lib/site.ts` + `NEXT_PUBLIC_SITE_URL`; no stale static files.

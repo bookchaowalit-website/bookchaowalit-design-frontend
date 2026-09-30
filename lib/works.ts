@@ -97,3 +97,34 @@ export function countByStatus(works: readonly Work[], status: Status): number {
 export function statusClass(status: string): string {
   return `status-${status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
+
+export const EXPORT_VERSION = 1;
+
+/** Serialise the catalogue for a JSON backup file. */
+export function exportWorks(works: readonly Work[]): string {
+  return JSON.stringify({ app: "design", version: EXPORT_VERSION, works }, null, 2) + "\n";
+}
+
+export type ImportResult = { works: Work[]; added: number; skipped: number } | { error: string };
+
+/**
+ * Merge a JSON backup into the catalogue. Accepts the export envelope or a bare
+ * array; entries are normalised like saved data and existing ids are kept.
+ */
+export function importWorks(current: readonly Work[], raw: string): ImportResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: "That file is not valid JSON." };
+  }
+  const list = Array.isArray(parsed)
+    ? parsed
+    : typeof parsed === "object" && parsed !== null && Array.isArray((parsed as { works?: unknown }).works)
+      ? (parsed as { works: unknown[] }).works
+      : null;
+  if (!list) return { error: "Expected a design catalogue export (an object with a works list)." };
+  const known = new Set(current.map((work) => work.id));
+  const fresh = normalizeWorks(list).filter((work) => !known.has(work.id));
+  return { works: [...current, ...fresh], added: fresh.length, skipped: list.length - fresh.length };
+}

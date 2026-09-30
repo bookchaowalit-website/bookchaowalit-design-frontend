@@ -6,6 +6,7 @@ A browser-local catalogue of visual work: each work has a title, a region
 ## Features
 - Plot a new work (Enter submits), change status inline, remove, and search
   by title, type, tool, or status. Visitor edits stay in `localStorage`.
+- Export the catalogue as JSON and import a backup (validated, merged by id)
 - The published seed catalogue lives in `data/works.json` and is validated by
   the unit tests; corrupt saved data is repaired instead of crashing.
 - `/api/mcp` JSON-RPC tools: `get_all`, `get_by_id`, `search` over the

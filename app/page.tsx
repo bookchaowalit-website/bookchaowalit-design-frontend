@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SEED_WORKS } from "@/lib/catalogue";
-import { STATUSES, STORAGE_KEY, TYPES, countByStatus, createWork, filterWorks, parseStoredWorks, setWorkStatus, statusClass } from "@/lib/works";
+import { STATUSES, STORAGE_KEY, TYPES, countByStatus, createWork, exportWorks, filterWorks, importWorks, parseStoredWorks, setWorkStatus, statusClass } from "@/lib/works";
 import type { Status, Work, WorkDraft } from "@/lib/works";
 
 const EMPTY_DRAFT: WorkDraft = { title: "", type: "UI/UX", tools: "", status: "Draft" };
@@ -40,6 +40,23 @@ export default function Home() {
     setFormError("");
   };
   const approved = countByStatus(works, "Approved");
+  const [backupNotice, setBackupNotice] = useState("");
+  const exportJson = () => {
+    const href = URL.createObjectURL(new Blob([exportWorks(works)], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = "design-catalogue.json";
+    anchor.click();
+    URL.revokeObjectURL(href);
+    setBackupNotice(`Exported ${works.length} ${works.length === 1 ? "work" : "works"}.`);
+  };
+  const importJson = async (file: File | undefined) => {
+    if (!file) return;
+    const result = importWorks(works, await file.text());
+    if ("error" in result) { setBackupNotice(result.error); return; }
+    setWorks(result.works);
+    setBackupNotice(`Imported ${result.added} new ${result.added === 1 ? "work" : "works"}${result.skipped ? `, skipped ${result.skipped} (already here or invalid)` : ""}.`);
+  };
 
   return (
     <main className="atlas-shell">
@@ -49,7 +66,7 @@ export default function Home() {
 
       <section className="atlas-instrument" aria-labelledby="instrument-title"><div className="instrument-label"><span className="crosshair" /><p className="atlas-kicker">LOG A NEW POINT</p><h2 id="instrument-title">Add to the atlas</h2><p>Keep the record specific enough to revisit.</p></div><form className="instrument-form" noValidate onSubmit={(event) => { event.preventDefault(); addWork(); }}><label><span>Work title</span><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} placeholder="Editorial system" required aria-invalid={formError ? true : undefined} aria-describedby={formError ? "work-form-error" : undefined} /></label><label><span>Region / type</span><select value={draft.type} onChange={(event) => setDraft({ ...draft, type: event.target.value })}>{TYPES.map((type) => <option key={type}>{type}</option>)}</select></label><label><span>Tools, comma-separated</span><input value={draft.tools} onChange={(event) => setDraft({ ...draft, tools: event.target.value })} placeholder="Figma, Illustrator" /></label><label><span>Status</span><select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as Status })}>{STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><button type="submit">Plot point <b aria-hidden="true">↗</b></button>{formError ? <p id="work-form-error" className="instrument-error" role="alert">{formError}</p> : null}</form></section>
 
-      <section className="atlas-library" aria-labelledby="library-title"><div className="library-top"><div><p className="atlas-kicker">THE CATALOGUE</p><h2 id="library-title">Known work</h2></div><label className="atlas-search"><span>Search by name, region, tool</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="find a signal" /></label></div>{filtered.length === 0 ? <p className="atlas-empty">No points match this search. Try another coordinate or plot a new point.</p> : <ol className="work-list">{filtered.map((work, index) => <li key={work.id} className="work-row"><span className="work-number">{String(index + 1).padStart(2, "0")}</span><div className="work-title"><h3>{work.title}</h3><span>{work.type}</span></div><div className="tool-orbit">{work.tools.map((tool) => <code key={tool}>{tool}</code>)}</div><label className={`work-status ${statusClass(work.status)}`}><span className="sr-only">Status for {work.title}</span><select value={work.status} onChange={(event) => setWorks((current) => setWorkStatus(current, work.id, event.target.value as Status))}>{STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><button type="button" className="erase-work" onClick={() => setWorks((current) => current.filter((item) => item.id !== work.id))} aria-label={`Remove ${work.title}`}>×</button></li>)}</ol>}</section>
+      <section className="atlas-library" aria-labelledby="library-title"><div className="library-top"><div><p className="atlas-kicker">THE CATALOGUE</p><h2 id="library-title">Known work</h2></div><label className="atlas-search"><span>Search by name, region, tool</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="find a signal" /></label></div><div className="atlas-backup"><button type="button" onClick={exportJson}>Export JSON</button><label><span>Import JSON</span><input type="file" accept="application/json,.json" onChange={(event) => { void importJson(event.target.files?.[0]); event.target.value = ""; }} /></label><p role="status">{backupNotice}</p></div>{filtered.length === 0 ? <p className="atlas-empty">No points match this search. Try another coordinate or plot a new point.</p> : <ol className="work-list">{filtered.map((work, index) => <li key={work.id} className="work-row"><span className="work-number">{String(index + 1).padStart(2, "0")}</span><div className="work-title"><h3>{work.title}</h3><span>{work.type}</span></div><div className="tool-orbit">{work.tools.map((tool) => <code key={tool}>{tool}</code>)}</div><label className={`work-status ${statusClass(work.status)}`}><span className="sr-only">Status for {work.title}</span><select value={work.status} onChange={(event) => setWorks((current) => setWorkStatus(current, work.id, event.target.value as Status))}>{STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><button type="button" className="erase-work" onClick={() => setWorks((current) => current.filter((item) => item.id !== work.id))} aria-label={`Remove ${work.title}`}>×</button></li>)}</ol>}</section>
       <footer className="atlas-footer"><span>DESIGN SPECS / 2026</span><span>Local catalogue · data stays in this browser</span></footer>
     </main>
   );

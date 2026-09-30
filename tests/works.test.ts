@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { countByStatus, createWork, filterWorks, normalizeWorks, parseStoredWorks, parseTools, setWorkStatus, statusClass } from "../lib/works.ts";
+import { countByStatus, createWork, exportWorks, filterWorks, importWorks, normalizeWorks, parseStoredWorks, parseTools, setWorkStatus, statusClass } from "../lib/works.ts";
 
 describe("design works model", () => {
   it("parses a comma list of unique tools", () => {
@@ -44,5 +44,30 @@ describe("design works model", () => {
   it("ships a seed catalogue that is fully valid", () => {
     const seed = JSON.parse(readFileSync(new URL("../data/works.json", import.meta.url), "utf8")) as { works: unknown[] };
     assert.equal(normalizeWorks(seed.works).length, seed.works.length);
+  });
+});
+
+describe("export / import", () => {
+  const base = normalizeWorks([{ id: "w1", title: "Identity", type: "Branding", tools: ["Figma"], status: "Approved" }]);
+
+  it("round-trips an export without duplicates", () => {
+    const result = importWorks(base, exportWorks(base));
+    assert.ok(!("error" in result));
+    assert.deepEqual(result.works, base);
+    assert.equal(result.added, 0);
+    assert.equal(result.skipped, 1);
+  });
+
+  it("adds normalised new works and skips malformed ones", () => {
+    const result = importWorks(base, JSON.stringify([{ id: "w2", title: "  Grid study ", tools: ["Figma", "figma", 3], status: "Bogus" }, { id: "", title: "x" }]));
+    assert.ok(!("error" in result));
+    assert.equal(result.added, 1);
+    assert.equal(result.skipped, 1);
+    assert.deepEqual(result.works[1], { id: "w2", title: "Grid study", type: "Research", tools: ["Figma"], status: "Draft" });
+  });
+
+  it("explains invalid files", () => {
+    assert.deepEqual(importWorks(base, "not json"), { error: "That file is not valid JSON." });
+    assert.ok("error" in importWorks(base, JSON.stringify({ channels: [] })));
   });
 });
