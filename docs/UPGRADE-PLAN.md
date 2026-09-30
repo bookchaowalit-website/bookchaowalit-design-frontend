@@ -43,3 +43,4 @@ validated, MCP serves the real seed catalogue, and CI runs strict checks.
     entry became a blank chip. Now invisible characters are stripped and keys
     compare after NFKC; full-width / ideographic commas also split the list.
   - Invisible-only titles were accepted; clipping could cut an emoji in half.
+- Security deps: `next` 16.1.6 -> 16.3.8 (and `eslint-config-next`) clears critical GHSA-2xp9-vwfh-vxw4 (Image Optimization RCE) plus bundled postcss/sharp highs; lockfile regenerated with same-major `npm audit fix`. `npm audit --omit=dev`: C1/H3/M1/L0 [nanoid:h,next:c,postcss:h,sharp:h] -> C0/H0/M0/L0.
