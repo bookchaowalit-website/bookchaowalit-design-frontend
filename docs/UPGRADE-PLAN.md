@@ -34,3 +34,12 @@ validated, MCP serves the real seed catalogue, and CI runs strict checks.
 ## Done in this pass (pass 2)
 - JSON backup: Export downloads the catalogue (`exportWorks`), Import merges a file (`importWorks`: export envelope or bare array, normalised like saved data, existing ids kept) with a visible `role="status"` result. Tested in `tests/works.test.ts`.
 - Checked cross-repo consistency: sitemap/robots already generated from `lib/site.ts` + `NEXT_PUBLIC_SITE_URL`; no stale static files.
+
+## Done in this pass (pass 3)
+- Edge-case pass on `lib/works.ts` (regression tests in `tests/works.test.ts`):
+  - JSON import and saved data failed on a leading UTF-8 BOM ("not valid JSON").
+  - Tool de-duplication compared `toLowerCase()` only: `figma​` and
+    full-width `ＦＩＧＭＡ` were kept as separate tools and a zero-width-only
+    entry became a blank chip. Now invisible characters are stripped and keys
+    compare after NFKC; full-width / ideographic commas also split the list.
+  - Invisible-only titles were accepted; clipping could cut an emoji in half.

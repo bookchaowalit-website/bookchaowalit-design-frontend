@@ -20,14 +20,29 @@ export function isStatus(value: unknown): value is Status {
   return typeof value === "string" && (STATUSES as readonly string[]).includes(value);
 }
 
-/** Split a comma list into unique, trimmed tool names (case-insensitive). */
+const INVISIBLE = /[\u200B-\u200D\u2060\uFEFF\u00AD]/g;
+
+/** Cut to `max` UTF-16 units without leaving half of a surrogate pair (emoji) behind. */
+export function clipText(value: string, max: number): string {
+  if (value.length <= max) return value;
+  const end = /[\uD800-\uDBFF]/.test(value[max - 1]) ? max - 1 : max;
+  return value.slice(0, end);
+}
+
+/**
+ * Split a comma list (ASCII, full-width or ideographic commas) into unique,
+ * trimmed tool names. Zero-width characters and BOMs are removed, and names
+ * are compared after NFKC + case folding, so "Figma", "figma\u200B" and
+ * full-width "ＦＩＧＭＡ" count as one tool.
+ */
 export function parseTools(raw: string): string[] {
   const seen = new Set<string>();
   const tools: string[] = [];
-  for (const part of raw.split(",")) {
-    const tool = part.trim().slice(0, 40);
-    if (!tool || seen.has(tool.toLowerCase())) continue;
-    seen.add(tool.toLowerCase());
+  for (const part of raw.split(/[,\uFF0C\u3001]/)) {
+    const tool = clipText(part.replace(INVISIBLE, "").trim(), 40);
+    const key = tool.normalize("NFKC").toLowerCase();
+    if (!tool || seen.has(key)) continue;
+    seen.add(key);
     tools.push(tool);
   }
   return tools.slice(0, MAX_TOOLS);
@@ -36,10 +51,10 @@ export function parseTools(raw: string): string[] {
 function toWork(entry: unknown): Work | null {
   if (typeof entry !== "object" || entry === null) return null;
   const { id, title, type, tools, status } = entry as Record<string, unknown>;
-  if (typeof id !== "string" || !id || typeof title !== "string" || !title.trim()) return null;
+  if (typeof id !== "string" || !id || typeof title !== "string" || !title.replace(INVISIBLE, "").trim()) return null;
   return {
     id,
-    title: title.trim().slice(0, MAX_TITLE),
+    title: clipText(title.trim(), MAX_TITLE),
     type: typeof type === "string" && type.trim() ? type.trim() : "Research",
     tools: Array.isArray(tools) ? parseTools(tools.filter((tool) => typeof tool === "string").join(",")) : [],
     status: isStatus(status) ? status : "Draft",
@@ -64,7 +79,7 @@ export function normalizeWorks(raw: unknown): Work[] {
 export function parseStoredWorks(raw: string | null): Work[] | null {
   if (raw === null) return null;
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(raw.replace(/^\uFEFF/, "")) as unknown;
     return Array.isArray(parsed) ? normalizeWorks(parsed) : null;
   } catch {
     return null;
@@ -75,7 +90,7 @@ export type WorkDraft = { title: string; type: string; tools: string; status: St
 
 export function createWork(draft: WorkDraft, id: string): { work: Work } | { error: string } {
   const title = draft.title.trim();
-  if (!title) return { error: "Give the work a title." };
+  if (!title.replace(INVISIBLE, "")) return { error: "Give the work a title." };
   if (title.length > MAX_TITLE) return { error: `Keep the title under ${MAX_TITLE} characters.` };
   return { work: { id, title, type: draft.type, tools: parseTools(draft.tools), status: draft.status } };
 }
@@ -114,7 +129,8 @@ export type ImportResult = { works: Work[]; added: number; skipped: number } | {
 export function importWorks(current: readonly Work[], raw: string): ImportResult {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    // Tolerate the UTF-8 BOM some editors (Windows Notepad) prepend.
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, ""));
   } catch {
     return { error: "That file is not valid JSON." };
   }

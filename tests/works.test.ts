@@ -71,3 +71,23 @@ describe("export / import", () => {
     assert.ok("error" in importWorks(base, JSON.stringify({ channels: [] })));
   });
 });
+
+describe("edge cases", () => {
+  it("imports a backup saved with a UTF-8 BOM", () => {
+    const raw = `﻿${exportWorks([{ id: "w9", title: "Mark", type: "Branding", tools: [], status: "Draft" }])}`;
+    const result = importWorks([], raw);
+    assert.ok("works" in result, "BOM-prefixed export should import");
+    assert.equal(result.added, 1);
+    assert.equal(parseStoredWorks(`﻿[]`)?.length, 0);
+  });
+
+  it("treats zero-width, full-width and case variants of a tool as duplicates", () => {
+    assert.deepEqual(parseTools("Figma, figma​, ＦＩＧＭＡ， Sketch、​"), ["Figma", "Sketch"]);
+  });
+
+  it("rejects invisible-only titles and never clips an emoji in half", () => {
+    assert.deepEqual(createWork({ title: "​﻿", type: "Branding", tools: "", status: "Draft" }, "w1"), { error: "Give the work a title." });
+    const [work] = normalizeWorks([{ id: "w1", title: `${"x".repeat(79)}😀` }]);
+    assert.equal(work.title, "x".repeat(79));
+  });
+});
