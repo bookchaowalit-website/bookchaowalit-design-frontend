@@ -1,19 +1,32 @@
-# Design Specs
+# Design Specs — star atlas
 
-UI tokens and design notes.
+A browser-local catalogue of visual work: each work has a title, a region
+(type), the tools used, and a review status (Draft / In review / Approved).
 
 ## Features
-- CRUD list
-- Search
-- localStorage
+- Plot a new work (Enter submits), change status inline, remove, and search
+  by title, type, tool, or status. Visitor edits stay in `localStorage`.
+- Export the catalogue as JSON and import a backup (validated, merged by id)
+- The published seed catalogue lives in `data/works.json` and is validated by
+  the unit tests; corrupt saved data is repaired instead of crashing.
+- `/api/mcp` JSON-RPC tools: `get_all`, `get_by_id`, `search` over the
+  published catalogue (browser-local additions are never sent to the server).
 
 ## Limitations
-- Local only
+- Local only: no accounts, sync, or image uploads.
 
 ## Run
 ```bash
-npm install
+npm ci
 npm run dev
+```
+
+## Checks (same as CI)
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
 ## Honesty

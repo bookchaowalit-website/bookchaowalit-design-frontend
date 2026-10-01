@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -9,15 +10,17 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Design Specs | Bookchaowalit",
-  description: "UI tokens and design notes.",
+  description: "A browser-local star-atlas catalogue of visual work: titles, regions, tools, and review status.",
   keywords: ["design", "portfolio"],
   authors: [{ name: "Bookchaowalit", url: "https://bookchaowalit.com" }],
   creator: "Bookchaowalit",
-  metadataBase: new URL("https://bookchaowalit.com"),
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
+    url: "/",
     title: "Design Specs | Bookchaowalit",
-    description: "UI tokens and design notes.",
+    description: "A browser-local star-atlas catalogue of visual work: titles, regions, tools, and review status.",
     siteName: "Bookchaowalit",
   },
   robots: { index: true, follow: true },

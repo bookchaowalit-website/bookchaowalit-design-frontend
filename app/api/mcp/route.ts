@@ -1,47 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { SEED_WORKS } from "@/lib/catalogue";
+import { filterWorks } from "@/lib/works";
+import { ToolInputError, requireString, respondToMcpRequest } from "@/lib/mcp";
+import type { McpTool } from "@/lib/mcp";
 
-export async function POST(request: NextRequest) {
-  let requestId: number | string = 0;
+const SERVER = { name: "bookchaowalit-design", version: "0.2.0" };
 
-  try {
-    const body = await request.json();
-    const { method, params } = body;
-    let result;
+// Serves the published seed catalogue (data/works.json). Works a visitor adds
+// on the page stay in their browser and are never visible here.
+const TOOLS: McpTool[] = [
+  {
+    name: "get_all",
+    description: "List the published design works (title, type, tools, status).",
+    inputSchema: { type: "object", properties: {} },
+    handler: () => SEED_WORKS,
+  },
+  {
+    name: "get_by_id",
+    description: "Get one published design work by id.",
+    inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+    handler: (args) => {
+      const id = requireString(args, "id");
+      const work = SEED_WORKS.find((item) => item.id === id);
+      if (!work) throw new ToolInputError(`No work with id "${id}".`);
+      return work;
+    },
+  },
+  {
+    name: "search",
+    description: "Search published works by title, type, tool, or status.",
+    inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+    handler: (args) => filterWorks(SEED_WORKS, requireString(args, "query")),
+  },
+];
 
-    switch (method) {
-      case 'initialize':
-        result = {
-          protocolVersion: '2024-11-05',
-          capabilities: { tools: {}, resources: {} },
-          serverInfo: {
-            name: 'Design Portfolio',
-            version: '1.0.0',
-            description: 'Design Portfolio - MCP Server'
-          }
-        };
-        break;
-
-      case 'tools/list':
-        result = {
-          tools: [
-            { name: 'get_all', description: 'Get all items', inputSchema: { type: 'object', properties: {} } },
-            { name: 'get_by_id', description: 'Get item by ID', inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } },
-            { name: 'search', description: 'Search items', inputSchema: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } }
-          ]
-        };
-        break;
-
-      case 'tools/call':
-        const toolName = params?.name;
-        result = { message: 'Tool called: ' + toolName, data: params?.arguments };
-        break;
-
-      default:
-        throw new Error(`Unknown method: ${method}`);
-    }
-
-    return NextResponse.json({ jsonrpc: '2.0', id: requestId, result });
-  } catch (error) {
-    return NextResponse.json({ jsonrpc: '2.0', id: requestId || 1, error: { code: -32000, message: error instanceof Error ? error.message : 'Error' } }, { status: 500 });
-  }
+export async function POST(request: Request) {
+  return respondToMcpRequest(request, SERVER, TOOLS);
 }
